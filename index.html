@@ -1,3 +1,224 @@
-<html>
-    
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Task Manager</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom font import for aesthetic */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8; /* Light gray background */
+        }
+        /* Custom scrollbar for task list */
+        #taskList::-webkit-scrollbar {
+            width: 8px;
+        }
+        #taskList::-webkit-scrollbar-thumb {
+            background-color: #93c5fd; /* Light blue */
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <!-- Main Application Container -->
+    <div id="app" class="w-full max-w-lg bg-white shadow-2xl rounded-xl p-6 sm:p-8 space-y-6">
+
+        <header class="text-center">
+            <h1 class="text-3xl font-extrabold text-gray-900 mb-2">My Daily Tasks</h1>
+            <p class="text-sm text-gray-500">Stay organized and productive.</p>
+        </header>
+
+        <!-- Task Input Section -->
+        <div class="flex flex-col sm:flex-row gap-3">
+            <input
+                type="text"
+                id="taskInput"
+                placeholder="Add a new task..."
+                class="flex-grow p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-150 shadow-sm"
+                maxlength="100"
+            >
+            <button
+                id="addTaskButton"
+                class="w-full sm:w-auto px-5 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition duration-150 transform hover:scale-[1.02] active:scale-100"
+            >
+                Add Task
+            </button>
+        </div>
+
+        <!-- Task List Container -->
+        <div class="space-y-4">
+            <h2 class="text-xl font-bold text-gray-700 border-b pb-2">Pending Items</h2>
+            <ul id="taskList" class="max-h-96 overflow-y-auto pr-2">
+                <!-- Tasks will be injected here -->
+            </ul>
+        </div>
+    </div>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // DOM Elements
+        const taskInput = document.getElementById('taskInput');
+        const addTaskButton = document.getElementById('addTaskButton');
+        const taskList = document.getElementById('taskList');
+
+        // Initial array for tasks
+        let tasks = [];
+
+        // --- Utility Functions ---
+
+        /**
+         * Renders the current state of the tasks array to the DOM.
+         */
+        function renderTasks() {
+            taskList.innerHTML = ''; // Clear existing list
+
+            if (tasks.length === 0) {
+                taskList.innerHTML = `
+                    <li class="p-4 text-center text-gray-400 bg-blue-50 rounded-lg border border-blue-200">
+                        You have no tasks! Time to add one.
+                    </li>
+                `;
+                return;
+            }
+
+            tasks.forEach((task, index) => {
+                const listItem = document.createElement('li');
+                listItem.className = 'flex items-center justify-between p-4 mb-3 bg-gray-50 rounded-xl shadow-sm transition duration-200 hover:shadow-md border border-gray-200';
+                listItem.setAttribute('data-index', index);
+
+                // Task Text and Status
+                const taskContent = document.createElement('span');
+                taskContent.textContent = task.text;
+                taskContent.className = `flex-grow mr-4 text-gray-800 break-words ${task.completed ? 'line-through text-gray-500' : 'font-medium'}`;
+
+                // Action Buttons container
+                const actions = document.createElement('div');
+                actions.className = 'flex space-x-2';
+
+                // Complete/Uncomplete Button (Toggle)
+                const toggleButton = document.createElement('button');
+                toggleButton.innerHTML = task.completed
+                    ? '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-600" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>'
+                    : '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 hover:text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>';
+                toggleButton.title = task.completed ? 'Mark as Pending' : 'Mark as Complete';
+                toggleButton.className = 'p-1 rounded-full hover:bg-gray-200 transition';
+                toggleButton.onclick = () => toggleTask(index);
+                actions.appendChild(toggleButton);
+
+                // Delete Button
+                const deleteButton = document.createElement('button');
+                deleteButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-400 hover:text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>';
+                deleteButton.title = 'Delete Task';
+                deleteButton.className = 'p-1 rounded-full hover:bg-red-100 transition';
+                deleteButton.onclick = () => deleteTask(index);
+                actions.appendChild(deleteButton);
+
+                listItem.appendChild(taskContent);
+                listItem.appendChild(actions);
+                taskList.appendChild(listItem);
+            });
+        }
+
+        /**
+         * Adds a new task from the input field.
+         */
+        function addTask() {
+            const text = taskInput.value.trim();
+
+            if (text === '') {
+                // In a real app, this would show a custom message box, but for simplicity:
+                console.error("Task cannot be empty.");
+                taskInput.placeholder = "Please enter a task (e.g., Buy groceries)";
+                taskInput.classList.add('border-red-500');
+                setTimeout(() => {
+                    taskInput.classList.remove('border-red-500');
+                    taskInput.placeholder = "Add a new task...";
+                }, 1500);
+                return;
+            }
+
+            tasks.push({ text: text, completed: false });
+            taskInput.value = ''; // Clear input
+            saveTasks();
+            renderTasks();
+        }
+
+        /**
+         * Toggles the completion status of a task.
+         * @param {number} index - The index of the task to toggle.
+         */
+        function toggleTask(index) {
+            if (index >= 0 && index < tasks.length) {
+                tasks[index].completed = !tasks[index].completed;
+                saveTasks();
+                renderTasks();
+            }
+        }
+
+        /**
+         * Deletes a task by its index.
+         * @param {number} index - The index of the task to delete.
+         */
+        function deleteTask(index) {
+            if (index >= 0 && index < tasks.length) {
+                tasks.splice(index, 1);
+                saveTasks();
+                renderTasks();
+            }
+        }
+
+        // --- Persistence (using localStorage for simplicity in this basic file) ---
+
+        /**
+         * Saves the current tasks array to local storage.
+         */
+        function saveTasks() {
+            try {
+                // In a real application, you would use a persistent database like Firestore here.
+                localStorage.setItem('tasks', JSON.stringify(tasks));
+            } catch (e) {
+                console.error("Could not save tasks to local storage:", e);
+            }
+        }
+
+        /**
+         * Loads tasks from local storage on startup.
+         */
+        function loadTasks() {
+            try {
+                const storedTasks = localStorage.getItem('tasks');
+                if (storedTasks) {
+                    tasks = JSON.parse(storedTasks);
+                }
+            } catch (e) {
+                console.error("Could not load tasks from local storage. Starting fresh.", e);
+            }
+            renderTasks();
+        }
+
+        // --- Event Listeners and Initialization ---
+
+        // Add task on button click
+        addTaskButton.addEventListener('click', addTask);
+
+        // Add task on Enter key press in the input field
+        taskInput.addEventListener('keypress', function(event) {
+            // Check if the Enter key was pressed (key code 13 or key 'Enter')
+            if (event.key === 'Enter' || event.keyCode === 13) {
+                event.preventDefault(); // Prevent default form submission behavior
+                addTask();
+            }
+        });
+
+        // Initialize the app when the script loads
+        loadTasks();
+
+    </script>
+
+</body>
 </html>
